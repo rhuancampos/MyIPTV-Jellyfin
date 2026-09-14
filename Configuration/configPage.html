@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Meu IPTV Config</title>
+</head>
+<body>
+    <!-- O data-role="page" é obrigatório para o Jellyfin carregar isso como uma página interna -->
+    <div data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                
+                <h1>Configuração IPTV Xtream</h1>
+                
+                <form id="myIptvConfigForm">
+                    
+                    <!-- Campo HOST -->
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtHost" label="URL do Host (DNS)" required />
+                        <div class="fieldDescription">Ex: http://meu-dns.com:8080 (Inclua http:// e a porta)</div>
+                    </div>
+
+                    <!-- Campo USER -->
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtUsername" label="Usuário" required />
+                    </div>
+
+                    <!-- Campo PASSWORD -->
+                    <div class="inputContainer">
+                        <input is="emby-input" type="password" id="txtPassword" label="Senha" required />
+                    </div>
+
+                    <!-- Botão Salvar -->
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block">
+                            <span>Salvar</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Script para carregar e salvar os dados -->
+        <script type="text/javascript">
+            // O ID deve ser IGUAL ao definido no Plugin.cs
+            var MyIptvPluginId = "95123456-1234-1234-1234-123456789012";
+
+            (function () {
+                var view = document.querySelector('.pluginConfigurationPage');
+
+                view.addEventListener('pageshow', function (e) {
+                    Dashboard.showLoadingMsg();
+                    var page = this;
+
+                    // 1. Carregar configuração atual
+                    ApiClient.getPluginConfiguration(MyIptvPluginId).then(function (config) {
+                        page.querySelector('#txtHost').value = config.Host || "";
+                        page.querySelector('#txtUsername').value = config.Username || "";
+                        page.querySelector('#txtPassword').value = config.Password || "";
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                // 2. Salvar configuração ao enviar formulário
+                view.querySelector('#myIptvConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    var page = this.closest('.page');
+
+                    ApiClient.getPluginConfiguration(MyIptvPluginId).then(function (config) {
+                        
+                        config.Host = page.querySelector('#txtHost').value;
+                        config.Username = page.querySelector('#txtUsername').value;
+                        config.Password = page.querySelector('#txtPassword').value;
+
+                        ApiClient.updatePluginConfiguration(MyIptvPluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
