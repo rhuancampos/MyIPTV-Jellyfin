@@ -32,7 +32,10 @@ namespace Jellyfin.Plugin.MyIPTV
                 {
                     Name = this.Name,
                     // IMPORTANTE: Isso deve bater com o Namespace + Pasta + Nome do arquivo
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
+                    EnableInMainMenu = true,
+                    MenuIcon = "live_tv",
+                    MenuSection = "server"
                 }
             };
         }

@@ -6,7 +6,7 @@
     "overview": "IPTV sync via Xtream Codes",
     "owner": "rhuancampos",
     "category": "Live TV",
-    "imageUrl": "",
+    "imageUrl": "https://raw.githubusercontent.com/rhuancampos/MyIPTV-Jellyfin/main/docs/logo.png",
     "versions": [
       {
         "version": "1.0.0.0",

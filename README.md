@@ -1,3 +1,5 @@
+<img src="docs/logo.png" width="96" height="96" alt="Logo do MyIPTV">
+
 # Jellyfin Plugin: MyIPTV
 
 🇧🇷 Português | [🇺🇸 English](README.en.md)
