@@ -14,7 +14,7 @@ namespace Jellyfin.Plugin.MyIPTV
         public override string Name => "Meu IPTV Custom";
         
         // MANTENHA ESTE ID IGUAL AO DO ARQUIVO HTML
-        public override Guid Id => Guid.Parse("95123456-1234-1234-1234-123456789012");
+        public override Guid Id => Guid.Parse("140d176f-a9c0-4ab7-b29e-d46d7386de87");
 
         public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
             : base(applicationPaths, xmlSerializer)

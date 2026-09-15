@@ -1,0 +1,72 @@
+name: Release plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Package zip
+        id: package
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          cd bin/Release/net9.0
+          zip -j "$GITHUB_WORKSPACE/Jellyfin.Plugin.MyIPTV.zip" Jellyfin.Plugin.MyIPTV.dll
+          cd "$GITHUB_WORKSPACE"
+          CHECKSUM=$(md5sum Jellyfin.Plugin.MyIPTV.zip | cut -d ' ' -f1)
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Jellyfin.Plugin.MyIPTV.zip
+          generate_release_notes: true
+
+      - name: Update manifest.json
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+          REPO: ${{ github.repository }}
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SOURCE_URL="https://github.com/$REPO/releases/download/v$VERSION/Jellyfin.Plugin.MyIPTV.zip"
+          jq --arg version "$VERSION" \
+             --arg checksum "$CHECKSUM" \
+             --arg sourceUrl "$SOURCE_URL" \
+             --arg timestamp "$TIMESTAMP" \
+             '.[0].versions = [{
+                "version": $version,
+                "changelog": "Ver a release no GitHub para detalhes.",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": $sourceUrl,
+                "checksum": $checksum,
+                "timestamp": $timestamp
+              }] + .[0].versions' \
+             manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+
+      - name: Commit manifest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Atualiza manifest.json para v${{ steps.package.outputs.version }}"
+          git push origin HEAD:main

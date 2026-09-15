@@ -1,0 +1,12 @@
+[
+  {
+    "guid": "140d176f-a9c0-4ab7-b29e-d46d7386de87",
+    "name": "Meu IPTV Custom",
+    "description": "Sincroniza um provedor Xtream Codes: gera M3U de Live TV (com EPG) e .strm de Filmes/Séries prontos para o Jellyfin.",
+    "overview": "IPTV via Xtream Codes",
+    "owner": "rhuancampos",
+    "category": "Live TV",
+    "imageUrl": "",
+    "versions": []
+  }
+]
