@@ -1,8 +1,22 @@
 # Jellyfin Plugin: MyIPTV
 
+🇧🇷 Português | [🇺🇸 English](README.en.md)
+
 Plugin para Jellyfin que sincroniza um provedor **Xtream Codes** (IPTV) com sua biblioteca:
 gera automaticamente uma playlist M3U de TV ao vivo (com categorias e EPG) e arquivos `.strm`
 para Filmes e Séries, prontos para o Jellyfin escanear como bibliotecas normais.
+
+## Aviso legal
+
+Este projeto é uma ferramenta técnica de sincronização: ele lê o catálogo de um provedor
+Xtream Codes **ao qual você já tem acesso** e organiza esses dados dentro do seu próprio
+Jellyfin (playlist M3U, guia EPG, arquivos `.strm`). Não fornecemos, hospedamos, revendemos
+nem temos qualquer vínculo com provedores de IPTV.
+
+O uso de serviços IPTV às vezes está associado à distribuição não autorizada de conteúdo
+protegido por direitos autorais. A responsabilidade pela legalidade do provedor escolhido e
+do conteúdo acessado é inteiramente do usuário. Use por sua conta e risco, apenas com
+serviços aos quais você tenha direito legal de acesso.
 
 ## Por que assim, e não um "canal" dentro do Jellyfin?
 
