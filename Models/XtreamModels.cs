@@ -40,7 +40,9 @@ namespace Jellyfin.Plugin.MyIPTV.Models
         
         [JsonPropertyName("added")]
         public string Added { get; set; }
-        
+
+        [JsonPropertyName("category_id")]
+        public string CategoryId { get; set; }
     }
 
     public class XtreamSeries
@@ -54,6 +56,9 @@ namespace Jellyfin.Plugin.MyIPTV.Models
 
         [JsonPropertyName("cover")]
         public string Cover { get; set; }
+
+        [JsonPropertyName("category_id")]
+        public string CategoryId { get; set; }
     }
 
     // Resposta de get_series_info: episódios agrupados por número da temporada

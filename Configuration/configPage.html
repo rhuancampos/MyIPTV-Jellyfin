@@ -29,6 +29,27 @@
                         <input is="emby-input" type="password" id="txtPassword" label="Senha" required />
                     </div>
 
+                    <h2>Sincronização (Live TV / Filmes / Séries)</h2>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtMoviesPath" label="Pasta dos Filmes (.strm)" />
+                        <div class="fieldDescription">Caminho dentro do container, ex: /data/movies</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtSeriesPath" label="Pasta das Séries (.strm)" />
+                        <div class="fieldDescription">Caminho dentro do container, ex: /data/tvshows</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtM3uPath" label="Arquivo M3U de Live TV" />
+                        <div class="fieldDescription">Caminho do arquivo gerado, ex: /config/live-tv.m3u (use esse mesmo caminho ao criar o M3U Tuner em Live TV)</div>
+                    </div>
+
+                    <div class="fieldDescription">
+                        A sincronização roda como tarefa agendada do Jellyfin (Painel → Tarefas Agendadas → "Sincronizar MyIPTV"), com execução diária às 04:00. Rode manualmente por lá quando quiser atualizar agora.
+                    </div>
+
                     <!-- Botão Salvar -->
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block">
@@ -56,6 +77,9 @@
                         page.querySelector('#txtHost').value = config.Host || "";
                         page.querySelector('#txtUsername').value = config.Username || "";
                         page.querySelector('#txtPassword').value = config.Password || "";
+                        page.querySelector('#txtMoviesPath').value = config.MoviesPath || "/data/movies";
+                        page.querySelector('#txtSeriesPath').value = config.SeriesPath || "/data/tvshows";
+                        page.querySelector('#txtM3uPath').value = config.M3uPath || "/config/live-tv.m3u";
                         Dashboard.hideLoadingMsg();
                     });
                 });
@@ -71,6 +95,9 @@
                         config.Host = page.querySelector('#txtHost').value;
                         config.Username = page.querySelector('#txtUsername').value;
                         config.Password = page.querySelector('#txtPassword').value;
+                        config.MoviesPath = page.querySelector('#txtMoviesPath').value;
+                        config.SeriesPath = page.querySelector('#txtSeriesPath').value;
+                        config.M3uPath = page.querySelector('#txtM3uPath').value;
 
                         ApiClient.updatePluginConfiguration(MyIptvPluginId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);

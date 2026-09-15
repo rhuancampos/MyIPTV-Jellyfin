@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using Jellyfin.Plugin.MyIPTV.Configuration;
 using Jellyfin.Plugin.MyIPTV.Models;
 using Microsoft.Extensions.Logging;
@@ -95,6 +96,73 @@ namespace Jellyfin.Plugin.MyIPTV.Services
         public async Task<List<XtreamSeries>> GetSeries(string categoryId, CancellationToken ct)
             => await FetchFromApi<XtreamSeries>("get_series", $"&category_id={categoryId}", ct);
 
+        // Versões sem filtro de categoria, usadas pela sincronização completa (M3U/.strm)
+        public async Task<List<XtreamStream>> GetAllLiveStreams(CancellationToken ct)
+            => await FetchFromApi<XtreamStream>("get_live_streams", "", ct);
+
+        public async Task<List<XtreamStream>> GetAllVodStreams(CancellationToken ct)
+            => await FetchFromApi<XtreamStream>("get_vod_streams", "", ct);
+
+        public async Task<List<XtreamSeries>> GetAllSeries(CancellationToken ct)
+            => await FetchFromApi<XtreamSeries>("get_series", "", ct);
+
+        // Baixa e faz o parse em streaming do guia XMLTV, retornando nome normalizado -> id do canal no EPG.
+        public async Task<Dictionary<string, string>> GetEpgChannelMap(CancellationToken cancellationToken)
+        {
+            var map = new Dictionary<string, string>();
+
+            if (string.IsNullOrWhiteSpace(Config.Host) ||
+                string.IsNullOrWhiteSpace(Config.Username) ||
+                string.IsNullOrWhiteSpace(Config.Password))
+            {
+                return map;
+            }
+
+            try
+            {
+                var host = Config.Host.TrimEnd('/');
+                if (!host.StartsWith("http", StringComparison.OrdinalIgnoreCase)) host = "http://" + host;
+                var url = $"{host}/xmltv.php?username={Config.Username}&password={Config.Password}";
+
+                using var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(90);
+
+                using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("[MyIPTV] Erro HTTP {StatusCode} ao acessar xmltv.php", response.StatusCode);
+                    return map;
+                }
+
+                using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                using var reader = XmlReader.Create(stream, new XmlReaderSettings { Async = true, DtdProcessing = DtdProcessing.Ignore });
+
+                string currentId = null;
+                while (await reader.ReadAsync().ConfigureAwait(false))
+                {
+                    if (reader.NodeType == XmlNodeType.Element && reader.Name == "channel")
+                    {
+                        currentId = reader.GetAttribute("id");
+                    }
+                    else if (reader.NodeType == XmlNodeType.Element && reader.Name == "display-name" && currentId != null)
+                    {
+                        var text = await reader.ReadElementContentAsStringAsync().ConfigureAwait(false);
+                        var key = Naming.NormalizeName(text);
+                        if (!string.IsNullOrEmpty(key) && !map.ContainsKey(key))
+                        {
+                            map[key] = currentId;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[MyIPTV] Erro ao processar guia XMLTV.");
+            }
+
+            return map;
+        }
+
         public async Task<XtreamSeriesInfo> GetSeriesInfo(string seriesId, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(Config.Host) ||
@@ -132,6 +200,11 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             catch (HttpRequestException ex)
             {
                 _logger.LogError(ex, "[MyIPTV] Erro de conexão ao buscar get_series_info.");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Timeout do HttpClient (não é o cancellationToken externo sendo acionado).
+                _logger.LogWarning("[MyIPTV] Timeout ao buscar get_series_info para a série {SeriesId}.", seriesId);
             }
 
             return null;
