@@ -2,7 +2,7 @@
   {
     "guid": "140d176f-a9c0-4ab7-b29e-d46d7386de87",
     "name": "Meu IPTV Custom",
-    "description": "Syncs an Xtream Codes provider: generates a Live TV M3U (with EPG) and Movie/Series .strm files ready for Jellyfin. Sync-only tool, not affiliated with any IPTV provider.",
+    "description": "Syncs an Xtream Codes provider: generates a Live TV M3U (with EPG) and Movie/Series .strm files ready for Jellyfin. After install: set Host/Username/Password on the plugin's settings page, then run the \"Sincronizar MyIPTV\" scheduled task. Sync-only tool, not affiliated with any IPTV provider. Docs & setup guide: https://github.com/rhuancampos/MyIPTV-Jellyfin",
     "overview": "IPTV sync via Xtream Codes",
     "owner": "rhuancampos",
     "category": "Live TV",

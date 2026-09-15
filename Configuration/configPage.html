@@ -10,7 +10,29 @@
             <div class="content-primary">
                 
                 <h1>Configuração IPTV Xtream</h1>
-                
+
+                <!-- Texto instrutivo bilíngue: só um dos dois blocos fica visível, via JS (idioma do navegador) -->
+                <div id="helpPt" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6;">
+                    <strong>Como configurar:</strong>
+                    <ol style="margin:0.5em 0 0 1.2em; padding:0;">
+                        <li>Preencha Host, Usuário e Senha do seu provedor Xtream Codes e clique em Salvar.</li>
+                        <li>As pastas/arquivo abaixo já vêm com valores padrão — só mude se seu Jellyfin usa caminhos diferentes.</li>
+                        <li>Vá em <strong>Painel → Tarefas Agendadas → "Sincronizar MyIPTV"</strong> e rode manualmente a primeira vez.</li>
+                        <li>Depois disso, configure o Live TV (M3U Tuner + XMLTV) e as bibliotecas de Filmes/Séries apontando pros caminhos definidos aqui — veja o passo a passo completo no repositório do projeto.</li>
+                    </ol>
+                    Repositório e documentação: <a is="emby-linkbutton" href="https://github.com/rhuancampos/MyIPTV-Jellyfin" target="_blank" rel="noopener noreferrer">github.com/rhuancampos/MyIPTV-Jellyfin</a>
+                </div>
+                <div id="helpEn" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6; display:none;">
+                    <strong>How to configure:</strong>
+                    <ol style="margin:0.5em 0 0 1.2em; padding:0;">
+                        <li>Fill in Host, Username and Password for your Xtream Codes provider and click Save.</li>
+                        <li>The folders/file below already have sensible defaults — only change them if your Jellyfin uses different paths.</li>
+                        <li>Go to <strong>Dashboard → Scheduled Tasks → "Sincronizar MyIPTV"</strong> and run it manually the first time.</li>
+                        <li>Then set up Live TV (M3U Tuner + XMLTV) and your Movie/Series libraries pointing at the paths defined here — see the full walkthrough in the project's repository.</li>
+                    </ol>
+                    Repository and docs: <a is="emby-linkbutton" href="https://github.com/rhuancampos/MyIPTV-Jellyfin" target="_blank" rel="noopener noreferrer">github.com/rhuancampos/MyIPTV-Jellyfin</a>
+                </div>
+
                 <form id="myIptvConfigForm">
                     
                     <!-- Campo HOST -->
@@ -67,6 +89,13 @@
 
             (function () {
                 var view = document.querySelector('.pluginConfigurationPage');
+
+                // Mostra o texto de ajuda no idioma do navegador (pt ou en)
+                var lang = ((navigator.language || navigator.userLanguage || 'en') + '').toLowerCase();
+                if (lang.indexOf('pt') !== 0) {
+                    view.querySelector('#helpPt').style.display = 'none';
+                    view.querySelector('#helpEn').style.display = '';
+                }
 
                 view.addEventListener('pageshow', function (e) {
                     Dashboard.showLoadingMsg();
