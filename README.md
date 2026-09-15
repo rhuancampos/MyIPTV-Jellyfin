@@ -56,6 +56,8 @@ bibliotecas de mídia comuns para Filmes/Séries via `.strm`.
 
 Painel → Plugins → **Meu IPTV Custom**:
 
+![Tela de configuração do plugin](docs/screenshot-config.jpg)
+
 | Campo | Descrição |
 |---|---|
 | Host | URL do painel Xtream, com `http://` e porta |

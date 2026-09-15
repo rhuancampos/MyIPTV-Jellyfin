@@ -58,6 +58,8 @@ TV, and regular media libraries for Movies/Series via `.strm`.
 
 Dashboard → Plugins → **Meu IPTV Custom**:
 
+![Plugin configuration screen](docs/screenshot-config.jpg)
+
 | Field | Description |
 |---|---|
 | Host | Your Xtream panel URL, including `http://` and the port |
