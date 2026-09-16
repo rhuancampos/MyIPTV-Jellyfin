@@ -144,7 +144,13 @@ namespace Jellyfin.Plugin.MyIPTV.Services
         private async Task SyncOneSeriesAsync(XtreamSeries s, Dictionary<string, string> catMap, string basePath, CancellationToken ct)
         {
             var info = await _api.GetSeriesInfo(s.SeriesId, ct).ConfigureAwait(false);
-            if (info?.Episodes == null)
+            if (info == null)
+            {
+                // GetSeriesInfo já logou o motivo (HTTP/timeout/JSON); propaga pra contar como falha no resumo.
+                throw new InvalidOperationException($"get_series_info não retornou dados para a série {s.SeriesId}.");
+            }
+
+            if (info.Episodes == null)
             {
                 return;
             }
