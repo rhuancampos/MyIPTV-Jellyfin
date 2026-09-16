@@ -173,38 +173,55 @@ namespace Jellyfin.Plugin.MyIPTV.Services
                 return null;
             }
 
-            try
+            var host = Config.Host.TrimEnd('/');
+            if (!host.StartsWith("http", StringComparison.OrdinalIgnoreCase)) host = "http://" + host;
+
+            var url = $"{host}/player_api.php?username={Config.Username}&password={Config.Password}&action=get_series_info&series_id={seriesId}";
+
+            const int maxAttempts = 4;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var host = Config.Host.TrimEnd('/');
-                if (!host.StartsWith("http", StringComparison.OrdinalIgnoreCase)) host = "http://" + host;
-
-                var url = $"{host}/player_api.php?username={Config.Username}&password={Config.Password}&action=get_series_info&series_id={seriesId}";
-
-                using var client = _httpClientFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(15);
-
-                using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    _logger.LogError("[MyIPTV] Erro HTTP {StatusCode} ao acessar get_series_info", response.StatusCode);
+                    using var client = _httpClientFactory.CreateClient();
+                    client.Timeout = TimeSpan.FromSeconds(15);
+
+                    using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        // 429/503 costumam ser o provedor Xtream limitando conexões simultâneas: vale re-tentar com backoff.
+                        var transient = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                            || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable;
+                        if (transient && attempt < maxAttempts)
+                        {
+                            _logger.LogWarning("[MyIPTV] HTTP {StatusCode} ao acessar get_series_info da série {SeriesId} (tentativa {Attempt}/{Max}), tentando de novo.", response.StatusCode, seriesId, attempt, maxAttempts);
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
+                            continue;
+                        }
+
+                        _logger.LogError("[MyIPTV] Erro HTTP {StatusCode} ao acessar get_series_info", response.StatusCode);
+                        return null;
+                    }
+
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                    return await JsonSerializer.DeserializeAsync<XtreamSeriesInfo>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError(jsonEx, "[MyIPTV] Erro ao ler JSON de get_series_info.");
                     return null;
                 }
-
-                using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                return await JsonSerializer.DeserializeAsync<XtreamSeriesInfo>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (JsonException jsonEx)
-            {
-                _logger.LogError(jsonEx, "[MyIPTV] Erro ao ler JSON de get_series_info.");
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "[MyIPTV] Erro de conexão ao buscar get_series_info.");
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                // Timeout do HttpClient (não é o cancellationToken externo sendo acionado).
-                _logger.LogWarning("[MyIPTV] Timeout ao buscar get_series_info para a série {SeriesId}.", seriesId);
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "[MyIPTV] Erro de conexão ao buscar get_series_info.");
+                    return null;
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Timeout do HttpClient (não é o cancellationToken externo sendo acionado).
+                    _logger.LogWarning("[MyIPTV] Timeout ao buscar get_series_info para a série {SeriesId}.", seriesId);
+                    return null;
+                }
             }
 
             return null;

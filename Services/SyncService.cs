@@ -14,7 +14,9 @@ namespace Jellyfin.Plugin.MyIPTV.Services
     // Gera o M3U de Live TV e os .strm de Filmes/Séries a partir da API Xtream.
     public class SyncService
     {
-        private const int SeriesConcurrency = 8;
+        // Provedores Xtream costumam devolver 503 se muitas get_series_info chegarem juntas; 2 é conservador o bastante
+        // pra não estourar o limite deles (o GetSeriesInfo ainda tenta de novo com backoff se acontecer).
+        private const int SeriesConcurrency = 2;
 
         private readonly XtreamApiService _api;
         private readonly ILogger<SyncService> _logger;
