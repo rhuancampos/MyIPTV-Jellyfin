@@ -53,14 +53,18 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             sb.Append("#EXTM3U\n");
             foreach (var s in streams)
             {
-                var cat = catMap.TryGetValue(s.CategoryId ?? string.Empty, out var cn) ? cn : "Outros";
+                var rawCategory = catMap.TryGetValue(s.CategoryId ?? string.Empty, out var cn) ? cn : "Outros";
+                var group = Naming.CleanGroupTitle(rawCategory);
+                var displayName = Naming.StripCategoryPrefix(s.Name, rawCategory);
+
+                // O casamento com o EPG usa sempre o nome completo original, não o encurtado.
                 var tvgId = epgMap.TryGetValue(Naming.NormalizeName(s.Name), out var id) ? id : string.Empty;
                 var url = _api.BuildStreamUrl("live", s.StreamId, "m3u8");
                 sb.Append("#EXTINF:-1 tvg-id=\"").Append(tvgId)
-                  .Append("\" tvg-name=\"").Append(Naming.EscapeAttr(s.Name))
+                  .Append("\" tvg-name=\"").Append(Naming.EscapeAttr(displayName))
                   .Append("\" tvg-logo=\"").Append(s.IconUrl)
-                  .Append("\" group-title=\"").Append(Naming.EscapeAttr(cat))
-                  .Append("\",").Append(s.Name).Append('\n');
+                  .Append("\" group-title=\"").Append(Naming.EscapeAttr(group))
+                  .Append("\",").Append(displayName).Append('\n');
                 sb.Append(url).Append('\n');
             }
 
