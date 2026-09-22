@@ -15,7 +15,7 @@
                 <div id="helpPt" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6;">
                     <strong>Como configurar:</strong>
                     <ol style="margin:0.5em 0 0 1.2em; padding:0;">
-                        <li>Preencha Host, Usuário e Senha do seu provedor Xtream Codes e clique em Salvar.</li>
+                        <li>Preencha Host, Usuário e Senha do seu provedor Xtream Codes <em>ou</em> cole o link da playlist M3U (mais rápido, uma única requisição) e clique em Salvar.</li>
                         <li>As pastas/arquivo abaixo já vêm com valores padrão — só mude se seu Jellyfin usa caminhos diferentes.</li>
                         <li>Vá em <strong>Painel → Tarefas Agendadas → "Sincronizar MyIPTV"</strong> e rode manualmente a primeira vez.</li>
                         <li>Depois disso, configure o Live TV (M3U Tuner + XMLTV) e as bibliotecas de Filmes/Séries apontando pros caminhos definidos aqui — veja o passo a passo completo no repositório do projeto.</li>
@@ -25,7 +25,7 @@
                 <div id="helpEn" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6; display:none;">
                     <strong>How to configure:</strong>
                     <ol style="margin:0.5em 0 0 1.2em; padding:0;">
-                        <li>Fill in Host, Username and Password for your Xtream Codes provider and click Save.</li>
+                        <li>Fill in Host, Username and Password for your Xtream Codes provider <em>or</em> paste the M3U playlist link (faster, a single request) and click Save.</li>
                         <li>The folders/file below already have sensible defaults — only change them if your Jellyfin uses different paths.</li>
                         <li>Go to <strong>Dashboard → Scheduled Tasks → "Sincronizar MyIPTV"</strong> and run it manually the first time.</li>
                         <li>Then set up Live TV (M3U Tuner + XMLTV) and your Movie/Series libraries pointing at the paths defined here — see the full walkthrough in the project's repository.</li>
@@ -33,22 +33,54 @@
                     Repository and docs: <a is="emby-linkbutton" href="https://github.com/rhuancampos/MyIPTV-Jellyfin" target="_blank" rel="noopener noreferrer">github.com/rhuancampos/MyIPTV-Jellyfin</a>
                 </div>
 
+                <div id="orgPt" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6;">
+                    <strong>Como os arquivos são organizados:</strong>
+                    <ul style="margin:0.5em 0 0 1.2em; padding:0;">
+                        <li><strong>Categorias viram pastas</strong>, sem o prefixo antes do "|": <code>Filmes | Drama</code> → <code>Drama</code>.</li>
+                        <li><strong>Filmes:</strong> <code>&lt;Pasta dos Filmes&gt;/Drama/Nome (2019)/Nome (2019).strm</code></li>
+                        <li><strong>Séries:</strong> <code>&lt;Pasta das Séries&gt;/Netflix/Nome da Série/Season 01/Nome da Série - S01E09.strm</code></li>
+                        <li><strong>Live TV:</strong> um único M3U, com o grupo do canal = categoria (<code>Canais | Globo</code> → <code>Globo</code>) e o guia (EPG) casado por id ou por nome.</li>
+                        <li>Nomes são limpos para o Jellyfin achar os metadados: tags como <code>[L]</code> e <code>[4K]</code> saem, <code>Nome - 2009</code> vira <code>Nome (2009)</code>, e <code>:</code> vira <code>-</code>.</li>
+                        <li>Título que aparece em mais de uma categoria (ou em mais de uma versão) fica só uma vez, na primeira categoria encontrada; versões legendadas <code>[L]</code> só entram se não houver outra.</li>
+                        <li>Arquivos só são regravados quando mudam. O plugin nunca apaga nada.</li>
+                    </ul>
+                </div>
+                <div id="orgEn" class="fieldDescription" style="margin-bottom:1.5em; line-height:1.6; display:none;">
+                    <strong>How files are organized:</strong>
+                    <ul style="margin:0.5em 0 0 1.2em; padding:0;">
+                        <li><strong>Categories become folders</strong>, without the prefix before the "|": <code>Filmes | Drama</code> → <code>Drama</code>.</li>
+                        <li><strong>Movies:</strong> <code>&lt;Movies folder&gt;/Drama/Name (2019)/Name (2019).strm</code></li>
+                        <li><strong>Series:</strong> <code>&lt;Series folder&gt;/Netflix/Show Name/Season 01/Show Name - S01E09.strm</code></li>
+                        <li><strong>Live TV:</strong> a single M3U, channel group = category (<code>Canais | Globo</code> → <code>Globo</code>) and the guide (EPG) matched by id or by name.</li>
+                        <li>Names are cleaned so Jellyfin finds metadata: tags like <code>[L]</code> and <code>[4K]</code> are dropped, <code>Name - 2009</code> becomes <code>Name (2009)</code>, and <code>:</code> becomes <code>-</code>.</li>
+                        <li>A title present in more than one category (or version) is written once, in the first category found; subtitled <code>[L]</code> versions are only used when there is no other.</li>
+                        <li>Files are only rewritten when they change. The plugin never deletes anything.</li>
+                    </ul>
+                </div>
+
                 <form id="myIptvConfigForm">
                     
+                    <h2>Fonte dos dados</h2>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="password" id="txtPlaylistUrl" label="Link da playlist M3U (opcional)" />
+                        <div class="fieldDescription">Ex: http://dns:porta/get.php?username=...&amp;password=...&amp;type=m3u_plus&amp;output=ts. Se preenchido, a sincronização baixa essa playlist (uma única requisição, com categorias e episódios) e ignora Host/Usuário/Senha abaixo. O parâmetro <code>output</code> (ts ou m3u8) define o formato dos canais ao vivo. Deixe em branco para usar a API Xtream. / If set, sync uses this playlist and ignores Host/Username/Password below.</div>
+                    </div>
+
                     <!-- Campo HOST -->
                     <div class="inputContainer">
-                        <input is="emby-input" type="text" id="txtHost" label="URL do Host (DNS)" required />
+                        <input is="emby-input" type="text" id="txtHost" label="URL do Host (DNS)" />
                         <div class="fieldDescription">Ex: http://meu-dns.com:8080 (Inclua http:// e a porta)</div>
                     </div>
 
                     <!-- Campo USER -->
                     <div class="inputContainer">
-                        <input is="emby-input" type="text" id="txtUsername" label="Usuário" required />
+                        <input is="emby-input" type="text" id="txtUsername" label="Usuário" />
                     </div>
 
                     <!-- Campo PASSWORD -->
                     <div class="inputContainer">
-                        <input is="emby-input" type="password" id="txtPassword" label="Senha" required />
+                        <input is="emby-input" type="password" id="txtPassword" label="Senha" />
                     </div>
 
                     <h2>Sincronização (Live TV / Filmes / Séries)</h2>
@@ -95,6 +127,8 @@
                 if (lang.indexOf('pt') !== 0) {
                     view.querySelector('#helpPt').style.display = 'none';
                     view.querySelector('#helpEn').style.display = '';
+                    view.querySelector('#orgPt').style.display = 'none';
+                    view.querySelector('#orgEn').style.display = '';
                 }
 
                 view.addEventListener('pageshow', function (e) {
@@ -103,6 +137,7 @@
 
                     // 1. Carregar configuração atual
                     ApiClient.getPluginConfiguration(MyIptvPluginId).then(function (config) {
+                        page.querySelector('#txtPlaylistUrl').value = config.PlaylistUrl || "";
                         page.querySelector('#txtHost').value = config.Host || "";
                         page.querySelector('#txtUsername').value = config.Username || "";
                         page.querySelector('#txtPassword').value = config.Password || "";
@@ -121,6 +156,7 @@
 
                     ApiClient.getPluginConfiguration(MyIptvPluginId).then(function (config) {
                         
+                        config.PlaylistUrl = page.querySelector('#txtPlaylistUrl').value.trim();
                         config.Host = page.querySelector('#txtHost').value;
                         config.Username = page.querySelector('#txtUsername').value;
                         config.Password = page.querySelector('#txtPassword').value;

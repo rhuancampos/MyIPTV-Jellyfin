@@ -35,6 +35,10 @@ namespace Jellyfin.Plugin.MyIPTV.Models
         [JsonPropertyName("container_extension")]
         public string Extension { get; set; } // mp4, mkv, ts
 
+        // Id do canal no guia (XMLTV), quando o provedor já informa.
+        [JsonPropertyName("epg_channel_id")]
+        public string EpgChannelId { get; set; }
+
         [JsonPropertyName("rating")]
         public string Rating { get; set; }
         

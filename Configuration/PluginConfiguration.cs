@@ -9,6 +9,9 @@ namespace Jellyfin.Plugin.MyIPTV.Configuration
         public string Username { get; set; }
         public string Password { get; set; }
 
+        // Opcional: link da playlist (get.php?type=m3u_plus). Se preenchido, o sync usa só ele (sem Host/Usuário/Senha).
+        public string PlaylistUrl { get; set; }
+
         // Caminhos usados pela sincronização (geração de M3U e .strm)
         public string MoviesPath { get; set; }
         public string SeriesPath { get; set; }
@@ -20,6 +23,7 @@ namespace Jellyfin.Plugin.MyIPTV.Configuration
             Host = "";
             Username = "";
             Password = "";
+            PlaylistUrl = "";
             MoviesPath = "/data/movies";
             SeriesPath = "/data/tvshows";
             M3uPath = "/config/live-tv.m3u";

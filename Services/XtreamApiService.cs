@@ -23,57 +23,47 @@ namespace Jellyfin.Plugin.MyIPTV.Services
         }
 
         // Pega a configuração atualizada da instância do Plugin
-        private PluginConfiguration Config => Plugin.Instance.Configuration;
+        private static PluginConfiguration Config => Plugin.Instance.Configuration;
 
+        // Exceção pronta pro log, sem senha/link da playlist (a URL costuma aparecer nas mensagens de erro de HTTP).
+        public static string SafeError(Exception ex)
+            => Naming.Redact(ex.ToString(), Config.Password, Config.PlaylistUrl);
+
+        private bool IsConfigured =>
+            !string.IsNullOrWhiteSpace(Config.Host) &&
+            !string.IsNullOrWhiteSpace(Config.Username) &&
+            !string.IsNullOrWhiteSpace(Config.Password);
+
+        // Host sem barra final e com esquema; usuário/senha codificados pra não quebrar a URL com &, #, + etc.
+        private string BaseUrl()
+        {
+            var host = Config.Host.Trim().TrimEnd('/');
+            return host.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? host : "http://" + host;
+        }
+
+        private string ApiUrl(string file, string query = "")
+            => $"{BaseUrl()}/{file}?username={Uri.EscapeDataString(Config.Username)}&password={Uri.EscapeDataString(Config.Password)}{query}";
+
+        // Erros sobem como exceção (em vez de lista vazia) pra o sync falhar sem sobrescrever arquivos bons com nada.
         private async Task<List<T>> FetchFromApi<T>(string action, string extraParams, CancellationToken cancellationToken)
         {
-            // Validação básica
-            if (string.IsNullOrWhiteSpace(Config.Host) || 
-                string.IsNullOrWhiteSpace(Config.Username) || 
-                string.IsNullOrWhiteSpace(Config.Password))
+            if (!IsConfigured)
             {
-                _logger.LogWarning("[MyIPTV] Configuração incompleta. Verifique Host/User/Pass.");
-                return new List<T>();
+                throw new InvalidOperationException("Configuração incompleta. Verifique Host/User/Pass.");
             }
 
-            try
-            {
-                // Limpeza da URL para evitar erros comuns (ex: barra no final)
-                var host = Config.Host.TrimEnd('/');
-                if (!host.StartsWith("http")) host = "http://" + host;
+            _logger.LogInformation("[MyIPTV] Consultando API: action={Action}", action);
 
-                var url = $"{host}/player_api.php?username={Config.Username}&password={Config.Password}&action={action}{extraParams}";
-                
-                // Log para debug (Cuidado: mostra a senha no log se não mascarar, útil apenas em dev)
-                _logger.LogInformation($"[MyIPTV] Consultando API: action={action}");
+            using var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(15);
 
-                using var client = _httpClientFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(15);
+            using var response = await client.GetAsync(ApiUrl("player_api.php", $"&action={action}{extraParams}"), cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
 
-                using var response = await client.GetAsync(url, cancellationToken);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"[MyIPTV] Erro HTTP {response.StatusCode} ao acessar {action}");
-                    return new List<T>();
-                }
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
-                using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                
-                // Tenta deserializar. Se a API retornar erro (ex: autenticação falha), ela retorna um JSON diferente 
-                // que pode causar exceção aqui, caindo no catch.
-                return await JsonSerializer.DeserializeAsync<List<T>>(stream, cancellationToken: cancellationToken) ?? new List<T>();
-            }
-            catch (JsonException jsonEx)
-            {
-                _logger.LogError(jsonEx, "[MyIPTV] Erro ao ler JSON. Provavelmente login inválido ou API fora do ar.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[MyIPTV] Erro geral na conexão.");
-            }
-
-            return new List<T>();
+            // Login inválido costuma vir como JSON de outro formato, o que estoura JsonException aqui.
+            return await JsonSerializer.DeserializeAsync<List<T>>(stream, cancellationToken: cancellationToken).ConfigureAwait(false) ?? new List<T>();
         }
 
         // Métodos públicos usados pelo Channel
@@ -111,18 +101,15 @@ namespace Jellyfin.Plugin.MyIPTV.Services
         {
             var map = new Dictionary<string, string>();
 
-            if (string.IsNullOrWhiteSpace(Config.Host) ||
-                string.IsNullOrWhiteSpace(Config.Username) ||
-                string.IsNullOrWhiteSpace(Config.Password))
+            if (!IsConfigured)
             {
                 return map;
             }
 
+            // EPG é opcional: se falhar, o M3U sai sem tvg-id em vez de o sync inteiro falhar.
             try
             {
-                var host = Config.Host.TrimEnd('/');
-                if (!host.StartsWith("http", StringComparison.OrdinalIgnoreCase)) host = "http://" + host;
-                var url = $"{host}/xmltv.php?username={Config.Username}&password={Config.Password}";
+                var url = ApiUrl("xmltv.php");
 
                 using var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(90);
@@ -157,7 +144,7 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[MyIPTV] Erro ao processar guia XMLTV.");
+                _logger.LogError("[MyIPTV] Erro ao processar guia XMLTV: {Error}", SafeError(ex));
             }
 
             return map;
@@ -165,18 +152,13 @@ namespace Jellyfin.Plugin.MyIPTV.Services
 
         public async Task<XtreamSeriesInfo> GetSeriesInfo(string seriesId, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(Config.Host) ||
-                string.IsNullOrWhiteSpace(Config.Username) ||
-                string.IsNullOrWhiteSpace(Config.Password))
+            if (!IsConfigured)
             {
                 _logger.LogWarning("[MyIPTV] Configuração incompleta. Verifique Host/User/Pass.");
                 return null;
             }
 
-            var host = Config.Host.TrimEnd('/');
-            if (!host.StartsWith("http", StringComparison.OrdinalIgnoreCase)) host = "http://" + host;
-
-            var url = $"{host}/player_api.php?username={Config.Username}&password={Config.Password}&action=get_series_info&series_id={seriesId}";
+            var url = ApiUrl("player_api.php", $"&action=get_series_info&series_id={Uri.EscapeDataString(seriesId)}");
 
             const int maxAttempts = 4;
             for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -208,12 +190,12 @@ namespace Jellyfin.Plugin.MyIPTV.Services
                 }
                 catch (JsonException jsonEx)
                 {
-                    _logger.LogError(jsonEx, "[MyIPTV] Erro ao ler JSON de get_series_info.");
+                    _logger.LogError("[MyIPTV] Erro ao ler JSON de get_series_info: {Error}", SafeError(jsonEx));
                     return null;
                 }
                 catch (HttpRequestException ex)
                 {
-                    _logger.LogError(ex, "[MyIPTV] Erro de conexão ao buscar get_series_info.");
+                    _logger.LogError("[MyIPTV] Erro de conexão ao buscar get_series_info: {Error}", SafeError(ex));
                     return null;
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -227,12 +209,29 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             return null;
         }
 
+        // Baixa a playlist inteira (dezenas de MB) em streaming e faz o parse linha a linha.
+        public async Task<List<MediaEntry>> GetPlaylistEntries(string playlistUrl, CancellationToken cancellationToken)
+        {
+            using var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromMinutes(10);
+
+            using var response = await client.GetAsync(playlistUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var reader = new System.IO.StreamReader(stream);
+            var entries = PlaylistParser.Parse(reader, out var skipped);
+            if (skipped > 0)
+            {
+                _logger.LogWarning("[MyIPTV] {Count} episódios da playlist ignorados por não terem 'SxxExx' no nome.", skipped);
+            }
+
+            return entries;
+        }
+
         public string BuildStreamUrl(string streamType, string streamId, string extension)
         {
             if (string.IsNullOrWhiteSpace(Config.Host)) return "";
-
-            var host = Config.Host.TrimEnd('/');
-            if (!host.StartsWith("http")) host = "http://" + host;
 
             var typePath = streamType switch
             {
@@ -245,7 +244,7 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             if (streamType == "live" && string.IsNullOrEmpty(extension)) extension = "ts";
             var ext = string.IsNullOrEmpty(extension) ? "" : $".{extension}";
 
-            return $"{host}/{typePath}/{Config.Username}/{Config.Password}/{streamId}{ext}";
+            return $"{BaseUrl()}/{typePath}/{Uri.EscapeDataString(Config.Username)}/{Uri.EscapeDataString(Config.Password)}/{streamId}{ext}";
         }
     }
 }

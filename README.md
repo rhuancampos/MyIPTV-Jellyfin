@@ -62,8 +62,9 @@ Painel → Plugins → **Meu IPTV Custom**:
 
 | Campo | Descrição |
 |---|---|
+| Link da playlist M3U | *Opcional.* Link `get.php?...&type=m3u_plus&output=ts` do provedor. Se preenchido, o sync usa só ele (veja abaixo) |
 | Host | URL do painel Xtream, com `http://` e porta |
-| Usuário / Senha | Credenciais da sua assinatura Xtream |
+| Usuário / Senha | Credenciais da sua assinatura Xtream (não são necessários se usar o link da playlist) |
 | Pasta dos Filmes | Onde os `.strm` de filmes são gravados (padrão `/data/movies`) |
 | Pasta das Séries | Onde os `.strm` de séries são gravados (padrão `/data/tvshows`) |
 | Arquivo M3U | Onde o `live-tv.m3u` é gravado (padrão `/config/live-tv.m3u`) |
@@ -79,10 +80,41 @@ docker exec -u root <container> chown -R abc:abc /data/movies /data/tvshows
 Painel → **Tarefas Agendadas** → categoria "Meu IPTV Custom" → **Sincronizar MyIPTV** →
 rodar manualmente a primeira vez. Depois disso, roda sozinha todo dia às 04:00.
 
-A tarefa:
-1. Busca categorias e canais ao vivo, casa com o guia XMLTV do provedor, e escreve o M3U.
-2. Busca o catálogo de filmes e gera um `.strm` por filme.
-3. Busca a lista de séries e, para cada uma, busca os episódios e gera um `.strm` por episódio.
+Há duas fontes de dados; escolha uma:
+
+- **API Xtream** (Host + Usuário + Senha): busca categorias e canais, casa com o guia XMLTV,
+  busca o catálogo de filmes e, para cada série, uma chamada `get_series_info` (lenta em
+  catálogos grandes, e alguns provedores limitam com 503).
+- **Link da playlist M3U** (`type=m3u_plus`): baixa tudo em **uma única requisição**, já com
+  categorias, `tvg-id` do guia e todos os episódios. É bem mais rápido e não sofre com limite
+  de requisições. O parâmetro `output` do link (`ts` ou `m3u8`) define o formato dos canais ao vivo.
+  Episódios são reconhecidos pelo `SxxExx` no nome (ex: `Os Flintstones S01E09`).
+
+Nas duas, o resultado é o mesmo: o M3U de Live TV e um `.strm` por filme e por episódio.
+Se uma etapa falha (ex: provedor fora do ar), os arquivos que já existiam são mantidos e a
+tarefa termina como falha.
+
+## Como os arquivos são organizados
+
+```
+/config/live-tv.m3u                                     ← um único M3U com todos os canais
+/data/movies/Drama/Capitã Marvel (2019)/Capitã Marvel (2019).strm
+/data/tvshows/Netflix/Os Flintstones/Season 01/Os Flintstones - S01E09.strm
+```
+
+- **Categoria vira pasta**, sem o prefixo antes do `|` (`Filmes | Drama` → `Drama`,
+  `Series | Netflix` → `Netflix`). No M3U, o `group-title` do canal segue a mesma regra
+  (`Canais | Globo` → `Globo`), e o prefixo repetido no nome do canal é removido
+  (categoria `A Fazenda 18` + canal `A Fazenda 18 CAM 01 (A)` → `CAM 01 (A)`).
+- **Nomes são limpos para o Jellyfin achar os metadados**: tags como `[L]` e `[4K]` saem,
+  `Nome - 2009` vira `Nome (2009)`, e `:` vira `-` (`Alabama: Presos` → `Alabama - Presos`).
+- **Sem duplicatas**: um filme ou série que aparece em mais de uma categoria (ou em mais de
+  uma versão, como `[L]` e `[4K]`) é escrito uma só vez, na primeira categoria em que aparece.
+  Versões legendadas (`[L]`) só entram se não houver outra.
+- **Guia (EPG)**: usa o `tvg-id`/`epg_channel_id` que o provedor informa; sem ele, casa pelo
+  nome do canal ignorando `HD`, `FHD`, `4K`, `H265` etc.
+- Arquivos só são regravados quando o conteúdo muda. O plugin **nunca apaga** nada: se um
+  título sair do provedor, o `.strm` antigo continua lá até você removê-lo.
 
 ## Depois de sincronizar
 
