@@ -1,0 +1,14 @@
+# Jellyfin local para desenvolver o plugin. Use ./dev.sh (sobe, recompila e recarrega o plugin).
+# Tudo fica em .dev/ (ignorado pelo git): apagar essa pasta zera o Jellyfin.
+services:
+  jellyfin:
+    image: docker.io/jellyfin/jellyfin:10.11.8
+    container_name: jellyfin-dev
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./.dev/config:/config
+      - ./.dev/cache:/cache
+      # Mesmos caminhos padrão do plugin: /data/movies, /data/tvshows, /config/live-tv.m3u
+      - ./.dev/media:/data
+    restart: unless-stopped

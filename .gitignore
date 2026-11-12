@@ -4,3 +4,4 @@ obj/
 *.lscache
 .vs/
 .claude/
+.dev/
