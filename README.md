@@ -99,10 +99,11 @@ tarefa termina como falha.
 ```
 /config/live-tv.m3u                                     ← um único M3U com todos os canais
 /data/movies/Drama/Capitã Marvel (2019)/Capitã Marvel (2019).strm
-/data/tvshows/Netflix/Os Flintstones/Season 01/Os Flintstones - S01E09.strm
+/data/tvshows/Os Flintstones/Season 01/Os Flintstones - S01E09.strm
 ```
 
-- **Categoria vira pasta**, sem o prefixo antes do `|` (`Filmes | Drama` → `Drama`,
+- **Categoria de filme vira pasta** (séries ficam direto na raiz, porque o Jellyfin trataria
+  a pasta da categoria como uma série), sem o prefixo antes do `|` (`Filmes | Drama` → `Drama`,
   `Series | Netflix` → `Netflix`). No M3U, o `group-title` do canal segue a mesma regra
   (`Canais | Globo` → `Globo`), e o prefixo repetido no nome do canal é removido
   (categoria `A Fazenda 18` + canal `A Fazenda 18 CAM 01 (A)` → `CAM 01 (A)`).

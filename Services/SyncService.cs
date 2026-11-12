@@ -170,9 +170,6 @@ namespace Jellyfin.Plugin.MyIPTV.Services
 
         private async Task SyncSeriesAsync(IProgress<double> progress, CancellationToken ct)
         {
-            var categories = await _api.GetSeriesCategories(ct).ConfigureAwait(false);
-            var catMap = categories.ToDictionary(c => c.Id, c => c.Name);
-
             // Série repetida em outra categoria: só a primeira é buscada (poupa chamadas ao provedor).
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var seriesList = (await _api.GetAllSeries(ct).ConfigureAwait(false)).Where(s => seen.Add(SeriesKey(s.Name))).ToList();
@@ -186,7 +183,7 @@ namespace Jellyfin.Plugin.MyIPTV.Services
                 await semaphore.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
-                    await SyncOneSeriesAsync(s, catMap, ct).ConfigureAwait(false);
+                    await SyncOneSeriesAsync(s, ct).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -205,7 +202,7 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             _logger.LogInformation("[MyIPTV] {Count} séries sincronizadas em {Path} ({Errors} falharam).", seriesList.Count, SeriesPath, errors);
         }
 
-        private async Task SyncOneSeriesAsync(XtreamSeries s, Dictionary<string, string> catMap, CancellationToken ct)
+        private async Task SyncOneSeriesAsync(XtreamSeries s, CancellationToken ct)
         {
             var info = await _api.GetSeriesInfo(s.SeriesId, ct).ConfigureAwait(false);
             if (info == null)
@@ -219,7 +216,6 @@ namespace Jellyfin.Plugin.MyIPTV.Services
                 return;
             }
 
-            var category = catMap.TryGetValue(s.CategoryId ?? string.Empty, out var cn) ? cn : "Outros";
             var entries = new List<MediaEntry>();
             foreach (var (seasonKey, episodes) in info.Episodes)
             {
@@ -231,7 +227,6 @@ namespace Jellyfin.Plugin.MyIPTV.Services
                     {
                         Kind = MediaKind.Series,
                         Name = s.Name,
-                        Category = category,
                         Season = seasonNum,
                         Episode = epNum,
                         Url = _api.BuildStreamUrl("series", ep.Id, string.IsNullOrEmpty(ep.Extension) ? "mp4" : ep.Extension)
@@ -305,6 +300,8 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             _logger.LogInformation("[MyIPTV] {Count} .strm de filmes em {Path} ({Dup} repetidos ignorados).", written, MoviesPath, duplicates);
         }
 
+        // Séries ficam direto na raiz (sem pasta de categoria): numa biblioteca de Séries o Jellyfin trata
+        // cada pasta do primeiro nível como uma série, então "Netflix/" viraria uma série chamada Netflix.
         private async Task WriteSeriesAsync(IEnumerable<MediaEntry> episodes, CancellationToken ct)
         {
             var written = 0;
@@ -312,7 +309,7 @@ namespace Jellyfin.Plugin.MyIPTV.Services
             {
                 ct.ThrowIfCancellationRequested();
                 var seriesName = Naming.SafeFileName(Naming.CleanMediaName(ep.Name));
-                var seasonFolder = Path.Combine(SeriesPath, CategoryFolder(ep.Category), seriesName, $"Season {ep.Season:D2}");
+                var seasonFolder = Path.Combine(SeriesPath, seriesName, $"Season {ep.Season:D2}");
                 Directory.CreateDirectory(seasonFolder);
 
                 var fileName = Naming.SafeFileName($"{seriesName} - S{ep.Season:D2}E{ep.Episode:D2}");

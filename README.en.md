@@ -100,10 +100,11 @@ If a stage fails (e.g. provider down), existing files are kept and the task ends
 ```
 /config/live-tv.m3u                                     ← a single M3U with every channel
 /data/movies/Drama/Captain Marvel (2019)/Captain Marvel (2019).strm
-/data/tvshows/Netflix/The Flintstones/Season 01/The Flintstones - S01E09.strm
+/data/tvshows/The Flintstones/Season 01/The Flintstones - S01E09.strm
 ```
 
-- **A category becomes a folder**, without the prefix before the `|` (`Filmes | Drama` →
+- **A movie category becomes a folder** (series sit at the root, since Jellyfin would treat
+  the category folder as a series), without the prefix before the `|` (`Filmes | Drama` →
   `Drama`, `Series | Netflix` → `Netflix`). In the M3U, the channel's `group-title` follows
   the same rule (`Canais | Globo` → `Globo`), and a channel name repeating its category is
   shortened (category `A Fazenda 18` + channel `A Fazenda 18 CAM 01 (A)` → `CAM 01 (A)`).
